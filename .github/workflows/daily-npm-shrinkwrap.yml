@@ -31,7 +31,11 @@ jobs:
       - name: Check for changes
         id: git-check
         run: |
-          git diff --quiet npm-shrinkwrap.json || echo "changes=true" >> $GITHUB_OUTPUT
+          if [ ! -f "npm-shrinkwrap.json" ]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            git diff --quiet npm-shrinkwrap.json || echo "changes=true" >> $GITHUB_OUTPUT
+          fi
           
       - name: Commit and push if changed
         if: steps.git-check.outputs.changes == 'true'
