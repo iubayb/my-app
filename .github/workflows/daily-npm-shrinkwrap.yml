@@ -9,7 +9,7 @@ jobs:
   update-shrinkwrap:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write 
       
     steps:
       - name: Checkout repository
@@ -20,25 +20,40 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '21' 
+          node-version: '21'
           
       - name: Install dependencies
         run: npm install
         
-      - name: Generate/Update npm shrinkwrap
-        run: npm shrinkwrap
-        
-      - name: Check for changes
-        id: git-check
+      - name: Check if shrinkwrap exists
+        id: check-file
         run: |
-          if [ ! -f "npm-shrinkwrap.json" ]; then
-            echo "changes=true" >> $GITHUB_OUTPUT
+          if [ -f "npm-shrinkwrap.json" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
           else
-            git diff --quiet npm-shrinkwrap.json || echo "changes=true" >> $GITHUB_OUTPUT
+            echo "exists=false" >> $GITHUB_OUTPUT
           fi
           
+      - name: Generate npm shrinkwrap
+        run: npm shrinkwrap
+        
+      - name: Check for changes if file existed
+        id: check-changes
+        if: steps.check-file.outputs.exists == 'true'
+        run: |
+          git diff --quiet npm-shrinkwrap.json || echo "changes=true" >> $GITHUB_OUTPUT
+          
+      - name: Commit and push if new file
+        if: steps.check-file.outputs.exists == 'false'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add npm-shrinkwrap.json
+          git commit -m "chore: create npm-shrinkwrap.json"
+          git push
+          
       - name: Commit and push if changed
-        if: steps.git-check.outputs.changes == 'true'
+        if: steps.check-file.outputs.exists == 'true' && steps.check-changes.outputs.changes == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
